@@ -189,7 +189,14 @@ export function AttendanceEditor({
               <Label>Curso</Label>
               <Select value={courseId} onValueChange={(v) => setCourseId(v ?? "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Elegir curso..." />
+                  <SelectValue placeholder="Elegir curso...">
+                    {courseId
+                      ? (() => {
+                          const c = initialCourses.find((x) => x.id === courseId);
+                          return c ? `${c.name} (${c.year})` : null;
+                        })()
+                      : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {initialCourses.map((c) => (
@@ -209,7 +216,11 @@ export function AttendanceEditor({
                 disabled={!courseId || subjectsForCourse.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Elegir materia..." />
+                  <SelectValue placeholder="Elegir materia...">
+                    {subjectId
+                      ? subjectsForCourse.find((s) => s.id === subjectId)?.name ?? null
+                      : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {subjectsForCourse.map((s) => (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,17 @@ import {
 } from "@/components/ui/select";
 import { createUser } from "./actions";
 
+type Role = "admin" | "teacher" | "student";
+const ROLE_LABEL: Record<Role, string> = {
+  student: "Alumno",
+  teacher: "Profesor",
+  admin: "Admin",
+};
+
 export function CreateUserForm() {
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const [role, setRole] = useState<Role>("student");
 
   return (
     <form
@@ -25,12 +33,14 @@ export function CreateUserForm() {
       className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end"
       action={(fd) =>
         startTransition(async () => {
+          fd.set("role", role);
           const res = await createUser(fd);
           if (res && "error" in res) {
             toast.error(res.error);
           } else {
             toast.success("Cuenta creada");
             formRef.current?.reset();
+            setRole("student");
           }
         })
       }
@@ -60,10 +70,10 @@ export function CreateUserForm() {
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="role">Rol</Label>
-        <Select name="role" defaultValue="student">
-          <SelectTrigger id="role">
-            <SelectValue />
+        <Label>Rol</Label>
+        <Select value={role} onValueChange={(v) => v && setRole(v as Role)}>
+          <SelectTrigger>
+            <SelectValue>{ROLE_LABEL[role]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="student">Alumno</SelectItem>

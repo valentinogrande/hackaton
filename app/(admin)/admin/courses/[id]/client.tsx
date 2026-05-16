@@ -79,7 +79,15 @@ export function EnrollmentManager({
                       ? "No quedan alumnos sin inscribir"
                       : "Elegir alumno..."
                   }
-                />
+                >
+                  {pickId
+                    ? (() => {
+                        const s = available.find((x) => x.id === pickId);
+                        if (!s) return null;
+                        return `${s.name}${s.email ? ` · ${s.email}` : ""}`;
+                      })()
+                    : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {available.map((s) => (

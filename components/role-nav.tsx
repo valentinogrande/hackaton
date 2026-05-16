@@ -20,9 +20,24 @@ import {
   BarChart2,
   GraduationCap,
   LogOut,
+  Flame,
 } from "lucide-react";
 
 type Role = Database["public"]["Enums"]["user_role"];
+
+export type StreakInfo = {
+  days: number;
+  multiplier: number;
+  tier: "none" | "warmup" | "fire" | "blaze" | "legend";
+};
+
+const TIER_LABEL: Record<StreakInfo["tier"], string> = {
+  none: "Sin racha",
+  warmup: "Calentando",
+  fire: "En llamas",
+  blaze: "Imparable",
+  legend: "Leyenda",
+};
 
 const LINKS: Record<Role, { href: string; label: string; icon: React.ElementType }[]> = {
   admin: [
@@ -54,7 +69,15 @@ const ROLE_LABELS: Record<Role, string> = {
   student: "Estudiante",
 };
 
-export function RoleNav({ role, fullName }: { role: Role; fullName: string }) {
+export function RoleNav({
+  role,
+  fullName,
+  streak,
+}: {
+  role: Role;
+  fullName: string;
+  streak?: StreakInfo;
+}) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
@@ -76,6 +99,39 @@ export function RoleNav({ role, fullName }: { role: Role; fullName: string }) {
           </div>
         </div>
       </div>
+
+      {/* Streak card (students only) */}
+      {streak && (
+        <Link
+          href="/student"
+          className="mx-3 mt-3 rounded-xl bg-white/10 hover:bg-white/15 transition-colors duration-150 p-3"
+        >
+          <div className="flex items-center gap-2">
+            <Flame
+              className={
+                streak.days >= 2
+                  ? "size-4 text-orange-400"
+                  : "size-4 text-white/40"
+              }
+            />
+            <p className="text-[10px] uppercase tracking-wider font-700 text-white/60">
+              Racha de estudio
+            </p>
+          </div>
+          <div className="mt-1 flex items-baseline gap-1">
+            <p className="text-2xl font-800 text-white">{streak.days}</p>
+            <p className="text-xs text-white/50">
+              {streak.days === 1 ? "día" : "días"}
+            </p>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[11px]">
+            <span className="font-700 text-orange-300">
+              ×{streak.multiplier.toFixed(1)}
+            </span>
+            <span className="text-white/50">{TIER_LABEL[streak.tier]}</span>
+          </div>
+        </Link>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5">

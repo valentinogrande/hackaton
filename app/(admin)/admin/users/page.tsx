@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { userDisplayName } from "@/lib/utils/user";
 import { RoleSelect } from "./role-select";
 import { CreateUserForm } from "./create-user-form";
 
@@ -15,7 +16,7 @@ export default async function UsersPage() {
   const supabase = await createClient();
   const { data: users } = await supabase
     .from("profiles")
-    .select("id, full_name, role, points_balance, created_at")
+    .select("id, full_name, email, role, points_balance, created_at")
     .order("created_at", { ascending: false });
 
   return (
@@ -36,6 +37,7 @@ export default async function UsersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Puntos</TableHead>
               <TableHead>Alta</TableHead>
@@ -44,7 +46,10 @@ export default async function UsersPage() {
           <TableBody>
             {(users ?? []).map((u) => (
               <TableRow key={u.id}>
-                <TableCell>{u.full_name || u.id.slice(0, 8)}</TableCell>
+                <TableCell>{userDisplayName(u)}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {u.email ?? "—"}
+                </TableCell>
                 <TableCell>
                   <RoleSelect userId={u.id} role={u.role} />
                 </TableCell>

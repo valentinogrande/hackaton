@@ -25,12 +25,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { markAttendance } from "./actions";
+import { userDisplayName } from "@/lib/utils/user";
 import type { Database } from "@/lib/database.types";
 
 type Status = Database["public"]["Enums"]["attendance_status"];
 type Course = { id: string; name: string; year: number };
 type Subject = { id: string; name: string; course_id: string };
-type Student = { id: string; full_name: string };
+type Student = { id: string; full_name: string; email: string | null };
 
 type Row = {
   studentId: string;
@@ -90,19 +91,21 @@ export function AttendanceEditor({
     (async () => {
       const { data: enrolls } = await supabase
         .from("enrollments")
-        .select("student_id, profiles(id, full_name)")
+        .select("student_id, profiles(id, full_name, email)")
         .eq("course_id", courseId);
 
       const list: Student[] = (enrolls ?? [])
         .map((e) => e.profiles)
-        .filter((p): p is { id: string; full_name: string } => !!p)
-        .sort((a, b) => a.full_name.localeCompare(b.full_name));
+        .filter((p): p is Student => !!p)
+        .sort((a, b) =>
+          userDisplayName(a).localeCompare(userDisplayName(b))
+        );
 
       setStudents(list);
       setRows(
         list.map((s) => ({
           studentId: s.id,
-          studentName: s.full_name || s.id.slice(0, 8),
+          studentName: userDisplayName(s),
           status: null,
         }))
       );

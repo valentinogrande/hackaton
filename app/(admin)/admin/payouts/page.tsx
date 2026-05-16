@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { userDisplayName } from "@/lib/utils/user";
 import { PeriodForm, RecomputeButton, PayWithdrawalButton } from "./client";
 
 export default async function PayoutsPage() {
@@ -138,7 +139,13 @@ export default async function PayoutsPage() {
               ) : (
                 pending.map((w) => (
                   <TableRow key={w.id}>
-                    <TableCell>{w.profiles?.full_name ?? "—"}</TableCell>
+                    <TableCell>
+                      {userDisplayName({
+                        full_name: w.profiles?.full_name,
+                        email: w.profiles?.email,
+                        id: w.student_id,
+                      })}
+                    </TableCell>
                     <TableCell>${w.amount}</TableCell>
                     <TableCell className="text-sm">
                       {new Date(w.requested_at).toLocaleDateString()}

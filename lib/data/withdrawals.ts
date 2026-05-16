@@ -15,7 +15,7 @@ export async function listPendingWithdrawals() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("withdrawals")
-    .select("*, profiles(full_name)")
+    .select("*, profiles(full_name, email)")
     .in("status", ["requested", "processing"])
     .order("requested_at");
   if (error) throw error;

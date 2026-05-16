@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { userDisplayName } from "@/lib/utils/user";
 
 export type PayoutBreakdownRow = {
   teacher_id: string;
@@ -20,25 +21,31 @@ export async function getStudentPayoutBreakdown(
   const { data, error } = await supabase
     .from("student_payouts")
     .select(
-      "teacher_id, course_id, grade_avg, study_points, composite, amount, rank, profiles!student_payouts_teacher_id_fkey(full_name), courses(name)"
+      "teacher_id, course_id, grade_avg, study_points, composite, amount, rank, profiles!student_payouts_teacher_id_fkey(full_name, email), courses(name)"
     )
     .eq("student_id", studentId)
     .eq("period_id", periodId)
     .order("amount", { ascending: false });
   if (error) throw error;
 
-  return (data ?? []).map((r) => ({
-    teacher_id: r.teacher_id,
-    teacher_name:
-      (r.profiles as { full_name: string } | null)?.full_name ?? "—",
-    course_id: r.course_id,
-    course_name: (r.courses as { name: string } | null)?.name ?? "—",
-    grade_avg: Number(r.grade_avg),
-    study_points: r.study_points,
-    composite: Number(r.composite),
-    amount: Number(r.amount),
-    rank: r.rank,
-  }));
+  return (data ?? []).map((r) => {
+    const teacher = r.profiles as { full_name: string; email: string | null } | null;
+    return {
+      teacher_id: r.teacher_id,
+      teacher_name: userDisplayName({
+        full_name: teacher?.full_name,
+        email: teacher?.email,
+        id: r.teacher_id,
+      }),
+      course_id: r.course_id,
+      course_name: (r.courses as { name: string } | null)?.name ?? "—",
+      grade_avg: Number(r.grade_avg),
+      study_points: r.study_points,
+      composite: Number(r.composite),
+      amount: Number(r.amount),
+      rank: r.rank,
+    };
+  });
 }
 
 export type TeacherPoolDetail = {
@@ -76,7 +83,7 @@ export async function getTeacherPoolDetail(
   const { data: rows, error } = await supabase
     .from("student_payouts")
     .select(
-      "student_id, course_id, grade_avg, study_points, composite, amount, rank, profiles!student_payouts_student_id_fkey(full_name), courses(name, year)"
+      "student_id, course_id, grade_avg, study_points, composite, amount, rank, profiles!student_payouts_student_id_fkey(full_name, email), courses(name, year)"
     )
     .eq("teacher_id", teacherId)
     .eq("period_id", periodId)
@@ -96,7 +103,7 @@ export async function getTeacherPoolDetail(
   for (const r of rows ?? []) {
     const cId = r.course_id;
     const c = r.courses as { name: string; year: number } | null;
-    const p = r.profiles as { full_name: string } | null;
+    const p = r.profiles as { full_name: string; email: string | null } | null;
     if (!byCourse.has(cId)) {
       byCourse.set(cId, {
         course_id: cId,
@@ -107,7 +114,11 @@ export async function getTeacherPoolDetail(
     }
     byCourse.get(cId)!.leaderboard.push({
       student_id: r.student_id,
-      student_name: p?.full_name ?? "—",
+      student_name: userDisplayName({
+        full_name: p?.full_name,
+        email: p?.email,
+        id: r.student_id,
+      }),
       grade_avg: Number(r.grade_avg),
       study_points: r.study_points,
       composite: Number(r.composite),
@@ -130,16 +141,22 @@ export async function listAllTeacherPools(periodId: string) {
   const { data, error } = await supabase
     .from("teacher_pools")
     .select(
-      "teacher_id, pool_amount, teacher_bonus, profiles(full_name)"
+      "teacher_id, pool_amount, teacher_bonus, profiles(full_name, email)"
     )
     .eq("period_id", periodId)
     .order("pool_amount", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((r) => ({
-    teacher_id: r.teacher_id,
-    teacher_name:
-      (r.profiles as { full_name: string } | null)?.full_name ?? "—",
-    pool_amount: Number(r.pool_amount),
-    teacher_bonus: Number(r.teacher_bonus),
-  }));
+  return (data ?? []).map((r) => {
+    const p = r.profiles as { full_name: string; email: string | null } | null;
+    return {
+      teacher_id: r.teacher_id,
+      teacher_name: userDisplayName({
+        full_name: p?.full_name,
+        email: p?.email,
+        id: r.teacher_id,
+      }),
+      pool_amount: Number(r.pool_amount),
+      teacher_bonus: Number(r.teacher_bonus),
+    };
+  });
 }

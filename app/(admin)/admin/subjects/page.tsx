@@ -20,7 +20,7 @@ export default async function SubjectsPage() {
     supabase.from("courses").select("id, name, year").order("year"),
     supabase
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, email")
       .eq("role", "teacher")
       .order("full_name"),
   ]);

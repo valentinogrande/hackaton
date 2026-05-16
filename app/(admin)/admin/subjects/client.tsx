@@ -13,9 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createSubject, setSubjectTeacher, deleteSubject } from "./actions";
+import { userDisplayName } from "@/lib/utils/user";
 
 type Course = { id: string; name: string; year: number };
-type Teacher = { id: string; full_name: string };
+type Teacher = { id: string; full_name: string; email: string | null };
 
 export function SubjectForm({
   courses,
@@ -71,7 +72,7 @@ export function SubjectForm({
             <SelectItem value="__none__">— Sin asignar —</SelectItem>
             {teachers.map((t) => (
               <SelectItem key={t.id} value={t.id}>
-                {t.full_name || t.id.slice(0, 8)}
+                {userDisplayName(t)}
               </SelectItem>
             ))}
           </SelectContent>

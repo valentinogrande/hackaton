@@ -352,6 +352,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bank_alias: string | null
+          bank_cbu: string | null
           created_at: string
           email: string | null
           full_name: string
@@ -360,6 +362,8 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
+          bank_alias?: string | null
+          bank_cbu?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
@@ -368,6 +372,8 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
+          bank_alias?: string | null
+          bank_cbu?: string | null
           created_at?: string
           email?: string | null
           full_name?: string

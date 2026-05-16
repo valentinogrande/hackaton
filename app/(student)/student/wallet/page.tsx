@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, GraduationCap } from "lucide-react";
+import { BankInfoForm } from "./bank-form";
+import { WithdrawForm } from "./withdraw-form";
 
 const STATUS_LABEL: Record<string, string> = {
   requested: "Solicitado",
@@ -48,6 +50,20 @@ export default async function WalletPage() {
     ? await getStudentPayoutBreakdown(user.id, period.id)
     : [];
   const withdrawals = await listWithdrawalsForStudent(user.id);
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("bank_cbu, bank_alias")
+    .eq("id", user.id)
+    .single();
+
+  const availableForWithdrawal = Math.max(
+    0,
+    Number(score?.payout_amount ?? 0) -
+      withdrawals
+        .filter((w) => w.status !== "rejected")
+        .reduce((sum, w) => sum + Number(w.amount), 0)
+  );
 
   return (
     <div className="space-y-6">
@@ -93,7 +109,7 @@ export default async function WalletPage() {
           <CardContent>
             <p className="text-3xl font-bold">${score?.payout_amount ?? 0}</p>
             <p className="text-xs text-muted-foreground">
-              Se actualiza cuando se recalcula el período
+              Disponible para retirar: ${availableForWithdrawal.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -158,13 +174,16 @@ export default async function WalletPage() {
         </div>
       </div>
 
-      <div className="rounded-md border p-6 bg-card text-sm">
-        <p className="font-medium mb-2">Placeholder — Dev FRONT</p>
-        <p className="text-muted-foreground">
-          Form de retiro (monto + CBU/alias) usando{" "}
-          <code>requestWithdrawal</code> de <code>./actions.ts</code>.
-        </p>
-      </div>
+      <BankInfoForm
+        initialCbu={profile?.bank_cbu ?? ""}
+        initialAlias={profile?.bank_alias ?? ""}
+      />
+
+      <WithdrawForm
+        hasCbu={Boolean(profile?.bank_cbu)}
+        hasAlias={Boolean(profile?.bank_alias)}
+        available={availableForWithdrawal}
+      />
 
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Mis retiros</h2>
@@ -174,28 +193,36 @@ export default async function WalletPage() {
               <TableRow>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Monto</TableHead>
+                <TableHead>Destino</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {withdrawals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     Sin retiros.
                   </TableCell>
                 </TableRow>
               ) : (
-                withdrawals.map((w) => (
-                  <TableRow key={w.id}>
-                    <TableCell className="text-sm">
-                      {new Date(w.requested_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>${w.amount}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{STATUS_LABEL[w.status]}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
+                withdrawals.map((w) => {
+                  const dest = w.destination as { type?: string; value?: string } | null;
+                  return (
+                    <TableRow key={w.id}>
+                      <TableCell className="text-sm">
+                        {new Date(w.requested_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>${w.amount}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {dest?.type === "cbu" ? "CBU" : dest?.type === "alias" ? "Alias" : "—"}
+                        {dest?.value ? ` · ${dest.value}` : ""}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{STATUS_LABEL[w.status]}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

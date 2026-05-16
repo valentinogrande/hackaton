@@ -1,0 +1,50 @@
+import { createClient } from "@/lib/supabase/server";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { RoleSelect } from "./role-select";
+
+export default async function UsersPage() {
+  const supabase = await createClient();
+  const { data: users } = await supabase
+    .from("profiles")
+    .select("id, full_name, role, points_balance, created_at")
+    .order("created_at", { ascending: false });
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Usuarios</h1>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Rol</TableHead>
+              <TableHead>Puntos</TableHead>
+              <TableHead>Alta</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(users ?? []).map((u) => (
+              <TableRow key={u.id}>
+                <TableCell>{u.full_name || u.id.slice(0, 8)}</TableCell>
+                <TableCell>
+                  <RoleSelect userId={u.id} role={u.role} />
+                </TableCell>
+                <TableCell>{u.points_balance}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {new Date(u.created_at).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}

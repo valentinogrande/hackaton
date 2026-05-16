@@ -1,6 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { z } from "zod";
-import { buildQuizPrompt } from "./prompts";
+import {
+  buildQuizPrompt,
+  buildFlashcardsPrompt,
+  buildClozePrompt,
+  buildTrueFalsePrompt,
+} from "./prompts";
+
+// ============================================================
+// Schemas (zod for runtime validation + Gemini responseSchema)
+// ============================================================
 
 export const QuizQuestionSchema = z.object({
   question: z.string().min(1),
@@ -8,15 +17,39 @@ export const QuizQuestionSchema = z.object({
   correctIndex: z.number().int().min(0).max(3),
   explanation: z.string().min(1),
 });
+export const QuizSchema = z.object({ questions: z.array(QuizQuestionSchema).min(1) });
 
-export const QuizSchema = z.object({
-  questions: z.array(QuizQuestionSchema).min(1),
+export const FlashcardSchema = z.object({
+  front: z.string().min(1),
+  back: z.string().min(1),
 });
+export const FlashcardsSchema = z.object({ cards: z.array(FlashcardSchema).min(1) });
+
+export const ClozeItemSchema = z.object({
+  sentence: z.string().min(1),
+  answer: z.string().min(1),
+  options: z.array(z.string().min(1)).length(4),
+  correctIndex: z.number().int().min(0).max(3),
+});
+export const ClozeSchema = z.object({ items: z.array(ClozeItemSchema).min(1) });
+
+export const TrueFalseItemSchema = z.object({
+  statement: z.string().min(1),
+  isTrue: z.boolean(),
+  explanation: z.string().min(1),
+});
+export const TrueFalseSchema = z.object({ items: z.array(TrueFalseItemSchema).min(1) });
 
 export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
-export type Quiz = z.infer<typeof QuizSchema>;
+export type Flashcard = z.infer<typeof FlashcardSchema>;
+export type ClozeItem = z.infer<typeof ClozeItemSchema>;
+export type TrueFalseItem = z.infer<typeof TrueFalseItemSchema>;
 
-const responseSchema = {
+// ============================================================
+// Gemini responseSchema shapes (constrained JSON output)
+// ============================================================
+
+const quizResponseSchema = {
   type: Type.OBJECT,
   required: ["questions"],
   properties: {
@@ -42,26 +75,100 @@ const responseSchema = {
   },
 };
 
+const flashcardsResponseSchema = {
+  type: Type.OBJECT,
+  required: ["cards"],
+  properties: {
+    cards: {
+      type: Type.ARRAY,
+      minItems: 1,
+      items: {
+        type: Type.OBJECT,
+        required: ["front", "back"],
+        properties: {
+          front: { type: Type.STRING },
+          back: { type: Type.STRING },
+        },
+      },
+    },
+  },
+};
+
+const clozeResponseSchema = {
+  type: Type.OBJECT,
+  required: ["items"],
+  properties: {
+    items: {
+      type: Type.ARRAY,
+      minItems: 1,
+      items: {
+        type: Type.OBJECT,
+        required: ["sentence", "answer", "options", "correctIndex"],
+        properties: {
+          sentence: { type: Type.STRING },
+          answer: { type: Type.STRING },
+          options: {
+            type: Type.ARRAY,
+            minItems: 4,
+            maxItems: 4,
+            items: { type: Type.STRING },
+          },
+          correctIndex: { type: Type.INTEGER },
+        },
+      },
+    },
+  },
+};
+
+const trueFalseResponseSchema = {
+  type: Type.OBJECT,
+  required: ["items"],
+  properties: {
+    items: {
+      type: Type.ARRAY,
+      minItems: 1,
+      items: {
+        type: Type.OBJECT,
+        required: ["statement", "isTrue", "explanation"],
+        properties: {
+          statement: { type: Type.STRING },
+          isTrue: { type: Type.BOOLEAN },
+          explanation: { type: Type.STRING },
+        },
+      },
+    },
+  },
+};
+
+// ============================================================
+// Error helpers
+// ============================================================
+
 function isServiceUnavailable(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return /503|UNAVAILABLE|high demand|try again later|overloaded/i.test(msg);
 }
-
 function isRateLimit(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return /429|RESOURCE_EXHAUSTED|rate limit|quota/i.test(msg);
 }
 
-export async function generateQuizFromPdf(args: {
+// ============================================================
+// Core Gemini call (PDF inline + schema-constrained JSON)
+// ============================================================
+
+async function callGeminiPdf<T>(args: {
   pdfBytes: Uint8Array;
-  count: number;
-}): Promise<QuizQuestion[]> {
+  prompt: string;
+  responseSchema: Record<string, unknown>;
+  zodSchema: z.ZodType<T>;
+  temperature?: number;
+}): Promise<T> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("Falta GEMINI_API_KEY en el entorno");
 
   const ai = new GoogleGenAI({ apiKey: key });
   const base64 = Buffer.from(args.pdfBytes).toString("base64");
-  const prompt = buildQuizPrompt(args.count);
 
   let text: string;
   try {
@@ -72,14 +179,14 @@ export async function generateQuizFromPdf(args: {
           role: "user",
           parts: [
             { inlineData: { mimeType: "application/pdf", data: base64 } },
-            { text: prompt },
+            { text: args.prompt },
           ],
         },
       ],
       config: {
         responseMimeType: "application/json",
-        responseSchema,
-        temperature: 0.7,
+        responseSchema: args.responseSchema,
+        temperature: args.temperature ?? 0.7,
         maxOutputTokens: 16000,
       },
     });
@@ -103,9 +210,67 @@ export async function generateQuizFromPdf(args: {
     throw new Error("Gemini devolvió un JSON inválido");
   }
 
-  const validated = QuizSchema.safeParse(parsed);
+  const validated = args.zodSchema.safeParse(parsed);
   if (!validated.success) {
     throw new Error("La respuesta de Gemini no cumple el esquema");
   }
-  return validated.data.questions;
+  return validated.data;
+}
+
+// ============================================================
+// Public API: one generator per mode
+// ============================================================
+
+export async function generateQuizFromPdf(args: {
+  pdfBytes: Uint8Array;
+  count: number;
+}): Promise<QuizQuestion[]> {
+  const { questions } = await callGeminiPdf({
+    pdfBytes: args.pdfBytes,
+    prompt: buildQuizPrompt(args.count),
+    responseSchema: quizResponseSchema,
+    zodSchema: QuizSchema,
+  });
+  return questions;
+}
+
+export async function generateFlashcardsFromPdf(args: {
+  pdfBytes: Uint8Array;
+  count: number;
+}): Promise<Flashcard[]> {
+  const { cards } = await callGeminiPdf({
+    pdfBytes: args.pdfBytes,
+    prompt: buildFlashcardsPrompt(args.count),
+    responseSchema: flashcardsResponseSchema,
+    zodSchema: FlashcardsSchema,
+    temperature: 0.6,
+  });
+  return cards;
+}
+
+export async function generateClozeFromPdf(args: {
+  pdfBytes: Uint8Array;
+  count: number;
+}): Promise<ClozeItem[]> {
+  const { items } = await callGeminiPdf({
+    pdfBytes: args.pdfBytes,
+    prompt: buildClozePrompt(args.count),
+    responseSchema: clozeResponseSchema,
+    zodSchema: ClozeSchema,
+  });
+  // Sanity filter: drop items where the answer doesn't match options[correctIndex].
+  return items.filter((it) => it.options[it.correctIndex] === it.answer);
+}
+
+export async function generateTrueFalseFromPdf(args: {
+  pdfBytes: Uint8Array;
+  count: number;
+}): Promise<TrueFalseItem[]> {
+  const { items } = await callGeminiPdf({
+    pdfBytes: args.pdfBytes,
+    prompt: buildTrueFalsePrompt(args.count),
+    responseSchema: trueFalseResponseSchema,
+    zodSchema: TrueFalseSchema,
+  });
+  return items;
 }

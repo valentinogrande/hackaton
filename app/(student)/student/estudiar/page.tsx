@@ -7,7 +7,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Sparkles } from "lucide-react";
+import {
+  Sparkles,
+  ListChecks,
+  Layers,
+  Pencil,
+  CircleHelp,
+} from "lucide-react";
 import { StudyButton } from "./study-button";
 
 export default async function EstudiarPage() {
@@ -17,7 +23,6 @@ export default async function EstudiarPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Materials from subjects the student is enrolled in (via course).
   const { data: enrollments } = await supabase
     .from("enrollments")
     .select("course_id")
@@ -47,8 +52,7 @@ export default async function EstudiarPage() {
       <div className="space-y-1">
         <h1 className="text-3xl font-bold">Estudiar</h1>
         <p className="text-sm text-muted-foreground">
-          Elegí un material y Gemini te genera un quiz nuevo cada vez. Cada
-          respuesta correcta suma puntos.
+          Elegí un material y un modo. Gemini te genera un set nuevo cada vez.
         </p>
       </div>
 
@@ -63,7 +67,7 @@ export default async function EstudiarPage() {
           </CardHeader>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {(materials ?? []).map((m) => (
             <Card key={m.id}>
               <CardHeader>
@@ -73,21 +77,85 @@ export default async function EstudiarPage() {
                   {new Date(m.created_at).toLocaleDateString()}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <StudyButton materialId={m.id} />
+              <CardContent className="flex flex-wrap gap-2">
+                <StudyButton
+                  materialId={m.id}
+                  mode="quiz"
+                  label="Quiz"
+                />
+                <StudyButton
+                  materialId={m.id}
+                  mode="flashcards"
+                  label="Flashcards"
+                  variant="outline"
+                />
+                <StudyButton
+                  materialId={m.id}
+                  mode="fill_blank"
+                  label="Completar"
+                  variant="outline"
+                />
+                <StudyButton
+                  materialId={m.id}
+                  mode="true_false"
+                  label="V / F"
+                  variant="outline"
+                />
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
-      <div className="rounded-md border bg-card p-4 text-xs text-muted-foreground flex items-start gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        <ModeHint
+          icon={<ListChecks className="size-4" />}
+          title="Quiz"
+          desc="5 preguntas multiple choice con explicación. +5 pts por acierto."
+        />
+        <ModeHint
+          icon={<Layers className="size-4" />}
+          title="Flashcards"
+          desc="Mirás el frente, intentás recordar el dorso, marcás si lo sabías. +3 pts."
+        />
+        <ModeHint
+          icon={<Pencil className="size-4" />}
+          title="Completar huecos"
+          desc="Oración con un hueco, elegís la palabra correcta entre 4. +7 pts."
+        />
+        <ModeHint
+          icon={<CircleHelp className="size-4" />}
+          title="Verdadero / Falso"
+          desc="Afirmación + 2 botones, después la explicación. +4 pts."
+        />
+      </div>
+
+      <div className="rounded-md border bg-card p-3 text-xs text-muted-foreground flex items-start gap-2">
         <Sparkles className="size-4 mt-0.5 shrink-0" />
         <p>
-          La generación de preguntas tarda 5-15 segundos por material. Las
-          preguntas son nuevas en cada sesión: si volvés a estudiar el mismo
-          PDF, te salen otras.
+          La generación tarda 5-15 segundos. Las preguntas son nuevas en cada
+          sesión.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function ModeHint({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="rounded-md border bg-card p-3 flex items-start gap-2">
+      <div className="mt-0.5">{icon}</div>
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="text-muted-foreground">{desc}</p>
       </div>
     </div>
   );

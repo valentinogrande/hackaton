@@ -4,10 +4,10 @@ export const POINTS_PER_CORRECT_ANSWER = {
   multiple_choice: 5,
   flashcard: 3,
   fill_blank: 7,
+  true_false: 4,
   open: 10,
 } as const;
 
-// Streak multipliers — Dev TOKENS can rework. Applied on top of base points.
 export function streakMultiplier(consecutiveCorrect: number): number {
   if (consecutiveCorrect >= 10) return 2.0;
   if (consecutiveCorrect >= 5) return 1.5;
@@ -15,8 +15,6 @@ export function streakMultiplier(consecutiveCorrect: number): number {
   return 1.0;
 }
 
-// Estimate of what a student will earn this period (in fiat) given current pool + score.
-// Returns { share: 0..1, estimatedPayout }.
 export function estimatePayoutShare(args: {
   composite: number;
   totalComposite: number;

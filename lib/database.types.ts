@@ -623,8 +623,8 @@ export type Database = {
     }
     Enums: {
       attendance_status: "present" | "absent" | "late"
-      question_kind: "multiple_choice" | "flashcard" | "fill_blank" | "open"
-      study_mode: "quiz" | "flashcards" | "fill_blank" | "open"
+      question_kind: "multiple_choice" | "flashcard" | "fill_blank" | "open" | "true_false"
+      study_mode: "quiz" | "flashcards" | "fill_blank" | "open" | "true_false"
       user_role: "admin" | "teacher" | "student"
       withdrawal_status: "requested" | "processing" | "paid" | "rejected"
     }
@@ -755,8 +755,8 @@ export const Constants = {
   public: {
     Enums: {
       attendance_status: ["present", "absent", "late"],
-      question_kind: ["multiple_choice", "flashcard", "fill_blank", "open"],
-      study_mode: ["quiz", "flashcards", "fill_blank", "open"],
+      question_kind: ["multiple_choice", "flashcard", "fill_blank", "open", "true_false"],
+      study_mode: ["quiz", "flashcards", "fill_blank", "open", "true_false"],
       user_role: ["admin", "teacher", "student"],
       withdrawal_status: ["requested", "processing", "paid", "rejected"],
     },

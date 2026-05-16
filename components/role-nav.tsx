@@ -19,6 +19,7 @@ import {
   Wallet,
   BarChart2,
   GraduationCap,
+  LineChart,
   LogOut,
   Flame,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const LINKS: Record<Role, { href: string; label: string; icon: React.ElementType
     { href: "/admin/courses", label: "Cursos", icon: BookOpen },
     { href: "/admin/subjects", label: "Materias", icon: Layers },
     { href: "/admin/payouts", label: "Pools / Retiros", icon: Landmark },
+    { href: "/admin/finance", label: "Finanzas", icon: LineChart },
   ],
   teacher: [
     { href: "/teacher", label: "Inicio", icon: Home },

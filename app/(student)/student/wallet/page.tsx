@@ -6,8 +6,7 @@ import {
   getStudentLivePeriodStats,
   currentPeriodKey,
 } from "@/lib/data/scores";
-import { getStudentPayoutBreakdown } from "@/lib/data/pools";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -17,9 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, GraduationCap, Info } from "lucide-react";
-import { BankInfoForm } from "./bank-form";
-import { WithdrawForm } from "./withdraw-form";
+import { Wallet } from "lucide-react";
+import { WithdrawDialog } from "./withdraw-dialog";
 
 const STATUS_LABEL: Record<string, string> = {
   requested: "Solicitado",
@@ -27,13 +25,6 @@ const STATUS_LABEL: Record<string, string> = {
   paid: "Pagado",
   rejected: "Rechazado",
 };
-
-function rankBadge(rank: number | null) {
-  if (rank === 1) return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/40">1º</Badge>;
-  if (rank === 2) return <Badge className="bg-zinc-400/15 text-zinc-700 border-zinc-400/40">2º</Badge>;
-  if (rank === 3) return <Badge className="bg-orange-500/15 text-orange-700 border-orange-500/40">3º</Badge>;
-  return <Badge variant="outline">{rank ?? "—"}º</Badge>;
-}
 
 export default async function WalletPage() {
   const supabase = await createClient();
@@ -45,208 +36,101 @@ export default async function WalletPage() {
   const schoolId = await getDemoSchoolId();
   const period = schoolId ? await getCurrentPeriodForSchool(schoolId) : null;
   const periodKey = period?.period ?? currentPeriodKey();
-
   const stats = await getStudentLivePeriodStats(user.id, periodKey, period?.id);
-  const breakdown = period
-    ? await getStudentPayoutBreakdown(user.id, period.id)
-    : [];
   const withdrawals = await listWithdrawalsForStudent(user.id);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("bank_cbu, bank_alias")
-    .eq("id", user.id)
-    .single();
-
+  const payout = stats.payoutAmount ?? 0;
   const availableForWithdrawal = Math.max(
     0,
-    (stats.payoutAmount ?? 0) -
+    payout -
       withdrawals
         .filter((w) => w.status !== "rejected")
-        .reduce((sum, w) => sum + Number(w.amount), 0)
+        .reduce((sum, w) => sum + Number(w.amount), 0),
   );
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Mi billetera</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Período actual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{periodKey}</p>
-            <p className="text-xs text-muted-foreground">
-              {period
-                ? `Pool del colegio: $${period.pool_amount}`
-                : "Sin período activo. Pedile al admin que cree uno."}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Tu desempeño del mes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{stats.composite.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">
-              {stats.studyPoints} pts ·{" "}
-              {stats.gradeAvg > 0 ? `prom ${stats.gradeAvg.toFixed(1)}` : "sin notas"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Estimación a cobrar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.hasRecompute ? (
-              <>
-                <p className="text-3xl font-bold">
-                  ${stats.payoutAmount?.toFixed(2) ?? "0.00"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Disponible para retirar: ${availableForWithdrawal.toFixed(2)}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-3xl font-bold text-muted-foreground">—</p>
-                <p className="text-xs text-muted-foreground">
-                  Se calcula cuando el admin cierre el período
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {!stats.hasRecompute && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex items-start gap-2">
-          <Info className="size-4 mt-0.5 shrink-0" />
-          <p>
-            Los números de arriba son <strong>en vivo</strong>: cuentan tus notas y
-            puntos del mes. El payout se fija cuando el admin corre &ldquo;Recalcular&rdquo; en{" "}
-            <code className="bg-amber-100 px-1.5 py-0.5 rounded-md text-xs">/admin/payouts</code>.
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Trophy className="size-4" />
-          Tu desempeño por curso
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          Cada profe distribuye su pool entre sus cursos. Dentro de cada curso,
-          los alumnos compiten: notas y estudio suman al composite, y los
-          tokens se reparten cuadrático (top recibe más).
+      <div>
+        <h1 className="text-3xl font-800">Mi billetera</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Retirá tus puntos al alias o CBU que prefieras.
         </p>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Curso · Profe</TableHead>
-                <TableHead>Posición</TableHead>
-                <TableHead>Promedio</TableHead>
-                <TableHead>Pts. estudio</TableHead>
-                <TableHead className="text-right">Te toca</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {breakdown.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center text-muted-foreground"
-                  >
-                    {period
-                      ? "Pedile al admin que recalcule el período para ver el desglose."
-                      : "Sin período activo."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                breakdown.map((r) => (
-                  <TableRow key={`${r.teacher_id}-${r.course_id}`}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{r.course_name}</span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <GraduationCap className="size-3" />
-                          {r.teacher_name}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{rankBadge(r.rank)}</TableCell>
-                    <TableCell>
-                      {r.grade_avg > 0 ? r.grade_avg.toFixed(1) : "—"}
-                    </TableCell>
-                    <TableCell>{r.study_points}</TableCell>
-                    <TableCell className="text-right font-semibold">
-                      ${r.amount.toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
       </div>
 
-      <BankInfoForm
-        initialCbu={profile?.bank_cbu ?? ""}
-        initialAlias={profile?.bank_alias ?? ""}
-      />
+      {/* Balance card */}
+      <Card className="bg-gradient-to-br from-emerald-50 to-violet-50 ring-1 ring-emerald-100/60">
+        <CardContent className="p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <Wallet className="size-4" />
+              <span className="text-sm font-600">Disponible para retirar</span>
+            </div>
+            <p className="text-5xl font-800 text-emerald-700">
+              ${availableForWithdrawal.toFixed(2)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Período {periodKey} · Score actual: {stats.composite.toFixed(2)}
+              {" · "}
+              {stats.studyPoints} pts
+              {stats.gradeAvg > 0 ? ` · prom ${stats.gradeAvg.toFixed(1)}` : ""}
+            </p>
+            {!stats.hasRecompute && (
+              <p className="text-[11px] text-amber-700/80">
+                El payout final se fija cuando el admin cierra el período.
+              </p>
+            )}
+          </div>
+          <WithdrawDialog available={availableForWithdrawal} />
+        </CardContent>
+      </Card>
 
-      <WithdrawForm
-        hasCbu={Boolean(profile?.bank_cbu)}
-        hasAlias={Boolean(profile?.bank_alias)}
-        available={availableForWithdrawal}
-      />
-
+      {/* Historial chiquito */}
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Mis retiros</h2>
+        <h2 className="text-sm font-700 text-muted-foreground uppercase tracking-wide">
+          Historial
+        </h2>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Fecha</TableHead>
-                <TableHead>Monto</TableHead>
                 <TableHead>Destino</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {withdrawals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    Sin retiros.
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground text-sm py-6"
+                  >
+                    Todavía no retiraste nada.
                   </TableCell>
                 </TableRow>
               ) : (
-                withdrawals.map((w) => {
-                  const dest = w.destination as { type?: string; value?: string } | null;
+                withdrawals.slice(0, 10).map((w) => {
+                  const dest = w.destination as
+                    | { type?: string; value?: string }
+                    | null;
                   return (
                     <TableRow key={w.id}>
                       <TableCell className="text-sm">
-                        {new Date(w.requested_at).toLocaleDateString()}
+                        {new Date(w.requested_at).toLocaleDateString("es-AR")}
                       </TableCell>
-                      <TableCell>${w.amount}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {dest?.type === "cbu" ? "CBU" : dest?.type === "alias" ? "Alias" : "—"}
-                        {dest?.value ? ` · ${dest.value}` : ""}
+                        {dest?.value
+                          ? `${dest.type === "cbu" ? "CBU" : "Alias"} · ${dest.value}`
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        ${Number(w.amount).toFixed(2)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{STATUS_LABEL[w.status]}</Badge>
+                        <Badge variant="outline">
+                          {STATUS_LABEL[w.status] ?? w.status}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );
@@ -255,6 +139,11 @@ export default async function WalletPage() {
             </TableBody>
           </Table>
         </div>
+        {withdrawals.length > 10 && (
+          <p className="text-xs text-muted-foreground text-right">
+            Mostrando los últimos 10 retiros de {withdrawals.length}.
+          </p>
+        )}
       </div>
     </div>
   );

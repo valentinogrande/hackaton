@@ -101,3 +101,49 @@ Cada item:
 - isTrue: boolean (true si es verdadera)
 - explanation: 1-2 frases`);
 }
+
+export function buildMixedPrompt(text: string) {
+  return `${SYSTEM}
+
+A continuación está el contenido del documento de estudio:
+
+---
+${text.slice(0, 60000)}
+---
+
+TAREA: Generá una sesión de estudio mixta con EXACTAMENTE:
+- 3 preguntas multiple choice (quiz)
+- 3 flashcards
+- 3 oraciones de completar (cloze)
+- 3 afirmaciones verdadero/falso (trueFalse)
+
+Distribuí las preguntas entre TODAS las secciones relevantes del documento.
+
+REGLAS POR TIPO:
+
+QUIZ (múltiple opción):
+- 4 opciones plausibles, 1 correcta. Distractores = errores típicos.
+- Variá posición de la correcta (no siempre index 0).
+- explanation: 1-2 frases breves.
+
+FLASHCARDS:
+- front: concepto / término corto (máx 8 palabras).
+- back: definición clara, 1-2 frases simples.
+- Sin términos triviales.
+
+CLOZE (completar huecos):
+- Exactamente UN "___" (tres guiones bajos) por oración.
+- El "___" NO puede ir al inicio ni al final. Al menos 3 palabras antes y 3 después.
+- Oración de 8-16 palabras con contexto claro.
+- La palabra escondida NO aparece en otra parte de la oración.
+- answer: 1-3 palabras, debe coincidir LITERAL con options[correctIndex].
+- 4 opciones cortas (1-3 palabras): 1 correcta + 3 distractores plausibles.
+
+VERDADERO / FALSO:
+- Afirmaciones cortas, máx 20 palabras.
+- ~50/50 verdaderas y falsas.
+- Las falsas suenan plausibles (errores típicos), no absurdas.
+- explanation: 1-2 frases.
+
+Devolvé SOLO JSON válido que cumpla el schema.`;
+}

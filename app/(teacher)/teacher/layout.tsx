@@ -23,7 +23,7 @@ export default async function TeacherLayout({
   return (
     <div className="flex-1 flex">
       <RoleNav role="teacher" fullName={profile.full_name} />
-      <div className="flex-1 p-6 overflow-auto">{children}</div>
+      <div className="flex-1 p-6 overflow-auto animate-in fade-in-0 slide-in-from-bottom-4 duration-300">{children}</div>
     </div>
   );
 }

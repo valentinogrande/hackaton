@@ -3,35 +3,19 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, Brain } from "lucide-react";
 import { startStudySession } from "./actions";
-import type { Database } from "@/lib/database.types";
 
-type Mode = Database["public"]["Enums"]["study_mode"];
-
-export function StudyButton({
-  materialId,
-  mode,
-  label,
-  variant = "default",
-}: {
-  materialId: string;
-  mode: Mode;
-  label: string;
-  variant?: "default" | "outline" | "secondary";
-}) {
+export function StudyButton({ materialId }: { materialId: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   return (
-    <Button
-      variant={variant}
-      size="sm"
+    <button
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          const res = await startStudySession(materialId, mode);
+          const res = await startStudySession(materialId);
           if ("error" in res) {
             toast.error(res.error);
             return;
@@ -39,15 +23,19 @@ export function StudyButton({
           router.push(`/student/estudiar/${res.sessionId}`);
         })
       }
+      className="inline-flex items-center gap-2 bg-violet-600 text-white rounded-xl px-4 py-2.5 text-sm font-semibold shadow-[0_3px_0_0_#5b21b6] hover:-translate-y-px transition-transform disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
     >
       {pending ? (
         <>
-          <Loader2 className="size-3 animate-spin" />
+          <Loader2 className="size-4 animate-spin" />
           Generando...
         </>
       ) : (
-        label
+        <>
+          <Brain className="size-4" />
+          Estudiar
+        </>
       )}
-    </Button>
+    </button>
   );
 }

@@ -1,19 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  Sparkles,
-  ListChecks,
-  Layers,
-  Pencil,
-  CircleHelp,
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { StudyButton } from "./study-button";
 
 export default async function EstudiarPage() {
@@ -48,114 +35,50 @@ export default async function EstudiarPage() {
     : { data: [] };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-3xl font-bold">Estudiar</h1>
+        <h1 className="text-3xl font-800">Estudiar</h1>
         <p className="text-sm text-muted-foreground">
-          Elegí un material y un modo. Gemini te genera un set nuevo cada vez.
+          Elegí un material. Gemini genera una sesión mixta con quiz, flashcards, completar y V/F.
         </p>
       </div>
 
       {(materials ?? []).length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No hay materiales todavía</CardTitle>
-            <CardDescription>
-              Pedile a tu profe que suba un PDF en{" "}
-              <code>/teacher/materials</code> y volvé.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <div className="bg-violet-50 ring-1 ring-violet-100 rounded-2xl p-8 text-center space-y-2">
+          <p className="text-base font-700 text-foreground">No hay materiales todavía</p>
+          <p className="text-sm text-muted-foreground">
+            Pedile a tu profe que suba un PDF en{" "}
+            <code className="bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-md text-xs">
+              /teacher/materials
+            </code>{" "}
+            y volvé.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {(materials ?? []).map((m) => (
-            <Card key={m.id}>
-              <CardHeader>
-                <CardTitle className="text-lg">{m.title}</CardTitle>
-                <CardDescription>
-                  {m.subjects?.name ?? "—"} ·{" "}
-                  {new Date(m.created_at).toLocaleDateString()}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                <StudyButton
-                  materialId={m.id}
-                  mode="quiz"
-                  label="Quiz"
-                />
-                <StudyButton
-                  materialId={m.id}
-                  mode="flashcards"
-                  label="Flashcards"
-                  variant="outline"
-                />
-                <StudyButton
-                  materialId={m.id}
-                  mode="fill_blank"
-                  label="Completar"
-                  variant="outline"
-                />
-                <StudyButton
-                  materialId={m.id}
-                  mode="true_false"
-                  label="V / F"
-                  variant="outline"
-                />
-              </CardContent>
-            </Card>
+            <div
+              key={m.id}
+              className="bg-card ring-1 ring-border rounded-2xl p-5 flex items-center justify-between gap-4 transition-all duration-200 hover:shadow-md hover:ring-violet-200"
+            >
+              <div className="border-l-4 border-violet-400 pl-3 min-w-0">
+                <p className="font-700 text-base text-foreground truncate">{m.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {m.subjects?.name ?? "—"} · {new Date(m.created_at).toLocaleDateString("es-AR")}
+                </p>
+              </div>
+              <StudyButton materialId={m.id} />
+            </div>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-        <ModeHint
-          icon={<ListChecks className="size-4" />}
-          title="Quiz"
-          desc="5 preguntas multiple choice con explicación. +5 pts por acierto."
-        />
-        <ModeHint
-          icon={<Layers className="size-4" />}
-          title="Flashcards"
-          desc="Mirás el frente, intentás recordar el dorso, marcás si lo sabías. +3 pts."
-        />
-        <ModeHint
-          icon={<Pencil className="size-4" />}
-          title="Completar huecos"
-          desc="Oración con un hueco, elegís la palabra correcta entre 4. +7 pts."
-        />
-        <ModeHint
-          icon={<CircleHelp className="size-4" />}
-          title="Verdadero / Falso"
-          desc="Afirmación + 2 botones, después la explicación. +4 pts."
-        />
-      </div>
-
-      <div className="rounded-md border bg-card p-3 text-xs text-muted-foreground flex items-start gap-2">
-        <Sparkles className="size-4 mt-0.5 shrink-0" />
+      <div className="rounded-xl bg-violet-50 ring-1 ring-violet-100 p-4 text-sm text-muted-foreground flex items-start gap-2.5">
+        <Sparkles className="size-4 mt-0.5 shrink-0 text-violet-500" />
         <p>
-          La generación tarda 5-15 segundos. Las preguntas son nuevas en cada
-          sesión.
+          La generación tarda 10–20 segundos. Cada sesión mezcla los 4 tipos de preguntas y las
+          preguntas fallidas se repiten hasta dominarlas.
         </p>
-      </div>
-    </div>
-  );
-}
-
-function ModeHint({
-  icon,
-  title,
-  desc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <div className="rounded-md border bg-card p-3 flex items-start gap-2">
-      <div className="mt-0.5">{icon}</div>
-      <div>
-        <p className="font-medium">{title}</p>
-        <p className="text-muted-foreground">{desc}</p>
       </div>
     </div>
   );

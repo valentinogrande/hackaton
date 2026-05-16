@@ -1,5 +1,37 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, BookOpen, Layers, FileText } from "lucide-react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+
+const STAT_CONFIG = [
+  {
+    label: "Usuarios",
+    icon: Users,
+    bg: "bg-violet-50",
+    iconColor: "text-violet-600",
+    ring: "ring-violet-100",
+  },
+  {
+    label: "Cursos",
+    icon: BookOpen,
+    bg: "bg-blue-50",
+    iconColor: "text-blue-600",
+    ring: "ring-blue-100",
+  },
+  {
+    label: "Materias",
+    icon: Layers,
+    bg: "bg-emerald-50",
+    iconColor: "text-emerald-600",
+    ring: "ring-emerald-100",
+  },
+  {
+    label: "Materiales",
+    icon: FileText,
+    bg: "bg-amber-50",
+    iconColor: "text-amber-600",
+    ring: "ring-amber-100",
+  },
+];
 
 export default async function AdminHome() {
   const supabase = await createClient();
@@ -13,28 +45,39 @@ export default async function AdminHome() {
     ]);
 
   const stats = [
-    { label: "Usuarios", value: users ?? 0 },
-    { label: "Cursos", value: courses ?? 0 },
-    { label: "Materias", value: subjects ?? 0 },
-    { label: "Materiales", value: materials ?? 0 },
+    { ...STAT_CONFIG[0], value: users ?? 0 },
+    { ...STAT_CONFIG[1], value: courses ?? 0 },
+    { ...STAT_CONFIG[2], value: subjects ?? 0 },
+    { ...STAT_CONFIG[3], value: materials ?? 0 },
   ];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Panel de administración</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-800 text-foreground">Panel de administración</h1>
+        <p className="text-muted-foreground text-sm mt-1">Resumen general de la plataforma.</p>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {s.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={s.label}
+              className={`${s.bg} ${s.ring} ring-1 rounded-2xl p-5 flex flex-col gap-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-md`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-600 text-foreground/70">{s.label}</p>
+                <div className={`size-8 rounded-xl bg-white flex items-center justify-center ${s.ring} ring-1`}>
+                  <Icon className={`size-4 ${s.iconColor}`} />
+                </div>
+              </div>
+              <p className={`text-4xl font-800 ${s.iconColor}`}>
+                <AnimatedNumber value={s.value} />
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

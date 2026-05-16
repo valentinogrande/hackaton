@@ -25,14 +25,14 @@ export default async function Home() {
         La plataforma que te paga por estudiar. Subí PDFs, generá quizzes con IA
         y ganá puntos por cada respuesta correcta.
       </p>
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8">
         <Link href="/login" className={buttonVariants()}>
           Ingresar
         </Link>
-        <Link href="/register" className={buttonVariants({ variant: "outline" })}>
-          Crear cuenta
-        </Link>
       </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Las cuentas las crea el admin del colegio.
+      </p>
     </main>
   );
 }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { GraduationCap, Sparkles, TrendingUp } from "lucide-react";
 import { LoginForm } from "./login-form";
 
@@ -55,10 +54,7 @@ export default function LoginPage() {
           <LoginForm />
 
           <p className="text-sm text-muted-foreground text-center">
-            ¿No tenés cuenta?{" "}
-            <Link href="/register" className="text-primary font-600 hover:underline">
-              Registrate
-            </Link>
+            ¿No tenés cuenta? Pedile a un admin del colegio que te dé acceso.
           </p>
         </div>
       </div>

@@ -7,7 +7,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoleSelect } from "./role-select";
+import { CreateUserForm } from "./create-user-form";
 
 export default async function UsersPage() {
   const supabase = await createClient();
@@ -17,8 +19,18 @@ export default async function UsersPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold">Usuarios</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Crear cuenta</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CreateUserForm />
+        </CardContent>
+      </Card>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>

@@ -8,6 +8,7 @@ import {
   Sparkles,
   ArrowRight,
   Eye,
+  Flame,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -240,6 +241,8 @@ function FeedbackBox({
   onNext: () => void;
   isLast: boolean;
 }) {
+  const hasBonus =
+    feedback.isCorrect && feedback.streakMultiplier > 1 && feedback.streakDays >= 2;
   return (
     <div className="rounded-md border bg-card p-3 text-sm space-y-2">
       <p className="font-medium">
@@ -247,6 +250,13 @@ function FeedbackBox({
           ? `¡Correcto! +${feedback.pointsAwarded} puntos`
           : "No era esta."}
       </p>
+      {hasBonus && (
+        <p className="text-xs text-orange-600 flex items-center gap-1">
+          <Flame className="size-3" />
+          Racha de {feedback.streakDays} días · ×{feedback.streakMultiplier.toFixed(1)}{" "}
+          (base {feedback.basePoints})
+        </p>
+      )}
       {feedback.explanation && (
         <p className="text-muted-foreground">{feedback.explanation}</p>
       )}

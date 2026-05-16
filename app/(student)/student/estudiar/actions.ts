@@ -8,7 +8,11 @@ import {
   generateClozeFromPdf,
   generateTrueFalseFromPdf,
 } from "@/lib/gemini";
-import { POINTS_PER_CORRECT_ANSWER } from "@/lib/tokens/economy";
+import {
+  POINTS_PER_CORRECT_ANSWER,
+  streakMultiplier,
+} from "@/lib/tokens/economy";
+import { computeCurrentStreak } from "@/lib/data/streaks";
 import type { Database, Json } from "@/lib/database.types";
 
 type Mode = Database["public"]["Enums"]["study_mode"];
@@ -134,6 +138,10 @@ export type AnswerResult =
   | {
       isCorrect: boolean;
       pointsAwarded: number;
+      basePoints: number;
+      streakDays: number;
+      streakMultiplier: number;
+      streakTier: "none" | "warmup" | "fire" | "blaze" | "legend";
       explanation: string;
       // For visual feedback in the UI.
       correctIndex?: number;
@@ -207,9 +215,13 @@ export async function answerQuestion(args: {
       return { error: `Tipo "${q.kind}" no soportado` };
   }
 
-  const pointsAwarded = isCorrect
+  const basePoints = isCorrect
     ? POINTS_PER_CORRECT_ANSWER[q.kind as keyof typeof POINTS_PER_CORRECT_ANSWER]
     : 0;
+
+  const streakDays = await computeCurrentStreak(user.id);
+  const { multiplier, tier } = streakMultiplier(streakDays);
+  const pointsAwarded = Math.round(basePoints * multiplier);
 
   const admin = createAdminClient();
 
@@ -256,6 +268,10 @@ export async function answerQuestion(args: {
   return {
     isCorrect,
     pointsAwarded,
+    basePoints,
+    streakDays,
+    streakMultiplier: multiplier,
+    streakTier: tier,
     explanation,
     correctIndex,
     correctBoolean,

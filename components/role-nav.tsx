@@ -18,6 +18,7 @@ const LINKS: Record<Role, { href: string; label: string }[]> = {
     { href: "/teacher/materials", label: "Materiales" },
     { href: "/teacher/grades", label: "Notas" },
     { href: "/teacher/attendance", label: "Asistencia" },
+    { href: "/teacher/pool", label: "Mi pool" },
   ],
   student: [
     { href: "/student", label: "Inicio" },

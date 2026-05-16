@@ -5,6 +5,7 @@ import {
   getDemoSchoolId,
   getStudentScoreForPeriod,
 } from "@/lib/data/scores";
+import { getStudentPayoutBreakdown } from "@/lib/data/pools";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Trophy, GraduationCap } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
   requested: "Solicitado",
@@ -22,6 +24,13 @@ const STATUS_LABEL: Record<string, string> = {
   paid: "Pagado",
   rejected: "Rechazado",
 };
+
+function rankBadge(rank: number | null) {
+  if (rank === 1) return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/40">1º</Badge>;
+  if (rank === 2) return <Badge className="bg-zinc-400/15 text-zinc-700 border-zinc-400/40">2º</Badge>;
+  if (rank === 3) return <Badge className="bg-orange-500/15 text-orange-700 border-orange-500/40">3º</Badge>;
+  return <Badge variant="outline">{rank ?? "—"}º</Badge>;
+}
 
 export default async function WalletPage() {
   const supabase = await createClient();
@@ -35,6 +44,9 @@ export default async function WalletPage() {
   const score = period
     ? await getStudentScoreForPeriod(user.id, period.id)
     : null;
+  const breakdown = period
+    ? await getStudentPayoutBreakdown(user.id, period.id)
+    : [];
   const withdrawals = await listWithdrawalsForStudent(user.id);
 
   return (
@@ -51,7 +63,7 @@ export default async function WalletPage() {
           <CardContent>
             <p className="text-2xl font-bold">{period?.period ?? "—"}</p>
             <p className="text-xs text-muted-foreground">
-              Pool total: ${period?.pool_amount ?? 0}
+              Pool del colegio: ${period?.pool_amount ?? 0}
             </p>
           </CardContent>
         </Card>
@@ -59,13 +71,15 @@ export default async function WalletPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Tu score
+              Tu score global
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{score?.composite ?? 0}</p>
+            <p className="text-2xl font-bold">
+              {score ? Number(score.composite).toFixed(2) : "0"}
+            </p>
             <p className="text-xs text-muted-foreground">
-              {score?.study_points ?? 0} pts · prom {score?.grade_score ?? 0}
+              {score?.study_points ?? 0} pts · prom {score?.grade_score?.toFixed?.(1) ?? "—"}
             </p>
           </CardContent>
         </Card>
@@ -79,10 +93,69 @@ export default async function WalletPage() {
           <CardContent>
             <p className="text-3xl font-bold">${score?.payout_amount ?? 0}</p>
             <p className="text-xs text-muted-foreground">
-              Se calcula al cerrar el período
+              Se actualiza cuando se recalcula el período
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Trophy className="size-4" />
+          Tu desempeño por curso
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Cada profe distribuye su pool entre sus cursos. Dentro de cada curso,
+          los alumnos compiten: notas y estudio suman al composite, y los
+          tokens se reparten cuadrático (top recibe más).
+        </p>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Curso · Profe</TableHead>
+                <TableHead>Posición</TableHead>
+                <TableHead>Promedio</TableHead>
+                <TableHead>Pts. estudio</TableHead>
+                <TableHead className="text-right">Te toca</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {breakdown.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center text-muted-foreground"
+                  >
+                    Todavía no hay payouts calculados para este período.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                breakdown.map((r) => (
+                  <TableRow key={`${r.teacher_id}-${r.course_id}`}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{r.course_name}</span>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <GraduationCap className="size-3" />
+                          {r.teacher_name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{rankBadge(r.rank)}</TableCell>
+                    <TableCell>
+                      {r.grade_avg > 0 ? r.grade_avg.toFixed(1) : "—"}
+                    </TableCell>
+                    <TableCell>{r.study_points}</TableCell>
+                    <TableCell className="text-right font-semibold">
+                      ${r.amount.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <div className="rounded-md border p-6 bg-card text-sm">

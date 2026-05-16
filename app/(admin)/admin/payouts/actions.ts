@@ -21,9 +21,8 @@ export async function createPeriod(formData: FormData) {
 }
 
 export async function recomputeScores(periodId: string) {
-  // SQL function does the heavy lifting; we use admin client to bypass RLS on writes.
   const admin = createAdminClient();
-  const { error } = await admin.rpc("recompute_student_scores", { p_period_id: periodId });
+  const { error } = await admin.rpc("recompute_pools_v2", { p_period_id: periodId });
   if (error) return { error: error.message };
   revalidatePath("/admin/payouts");
   return { ok: true as const };

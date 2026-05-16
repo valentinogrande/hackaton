@@ -427,6 +427,77 @@ export type Database = {
         }
         Relationships: []
       }
+      student_payouts: {
+        Row: {
+          amount: number
+          composite: number
+          computed_at: string
+          course_id: string
+          grade_avg: number
+          id: string
+          period_id: string
+          rank: number | null
+          student_id: string
+          study_points: number
+          teacher_id: string
+        }
+        Insert: {
+          amount?: number
+          composite?: number
+          computed_at?: string
+          course_id: string
+          grade_avg?: number
+          id?: string
+          period_id: string
+          rank?: number | null
+          student_id: string
+          study_points?: number
+          teacher_id: string
+        }
+        Update: {
+          amount?: number
+          composite?: number
+          computed_at?: string
+          course_id?: string
+          grade_avg?: number
+          id?: string
+          period_id?: string
+          rank?: number | null
+          student_id?: string
+          study_points?: number
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_payouts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_payouts_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payout_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_payouts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_payouts_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_scores: {
         Row: {
           composite: number
@@ -556,6 +627,48 @@ export type Database = {
           },
         ]
       }
+      teacher_pools: {
+        Row: {
+          computed_at: string
+          id: string
+          period_id: string
+          pool_amount: number
+          teacher_bonus: number
+          teacher_id: string
+        }
+        Insert: {
+          computed_at?: string
+          id?: string
+          period_id: string
+          pool_amount?: number
+          teacher_bonus?: number
+          teacher_id: string
+        }
+        Update: {
+          computed_at?: string
+          id?: string
+          period_id?: string
+          pool_amount?: number
+          teacher_bonus?: number
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_pools_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payout_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_pools_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       withdrawals: {
         Row: {
           amount: number
@@ -616,14 +729,19 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      recompute_student_scores: {
+      recompute_pools_v2: {
         Args: { p_period_id: string }
         Returns: undefined
       }
     }
     Enums: {
       attendance_status: "present" | "absent" | "late"
-      question_kind: "multiple_choice" | "flashcard" | "fill_blank" | "open" | "true_false"
+      question_kind:
+        | "multiple_choice"
+        | "flashcard"
+        | "fill_blank"
+        | "open"
+        | "true_false"
       study_mode: "quiz" | "flashcards" | "fill_blank" | "open" | "true_false"
       user_role: "admin" | "teacher" | "student"
       withdrawal_status: "requested" | "processing" | "paid" | "rejected"
@@ -755,7 +873,13 @@ export const Constants = {
   public: {
     Enums: {
       attendance_status: ["present", "absent", "late"],
-      question_kind: ["multiple_choice", "flashcard", "fill_blank", "open", "true_false"],
+      question_kind: [
+        "multiple_choice",
+        "flashcard",
+        "fill_blank",
+        "open",
+        "true_false",
+      ],
       study_mode: ["quiz", "flashcards", "fill_blank", "open", "true_false"],
       user_role: ["admin", "teacher", "student"],
       withdrawal_status: ["requested", "processing", "paid", "rejected"],

@@ -18,7 +18,9 @@ export async function getStudentPayoutBreakdown(
   periodId: string
 ): Promise<PayoutBreakdownRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+
+  // Snapshot from the last recompute, if any.
+  const { data: snapshot, error: sErr } = await supabase
     .from("student_payouts")
     .select(
       "teacher_id, course_id, grade_avg, study_points, composite, amount, rank, profiles!student_payouts_teacher_id_fkey(full_name, email), courses(name)"
@@ -26,19 +28,61 @@ export async function getStudentPayoutBreakdown(
     .eq("student_id", studentId)
     .eq("period_id", periodId)
     .order("amount", { ascending: false });
-  if (error) throw error;
+  if (sErr) throw sErr;
 
-  return (data ?? []).map((r) => {
-    const teacher = r.profiles as { full_name: string; email: string | null } | null;
+  if (snapshot && snapshot.length > 0) {
+    return snapshot.map((r) => {
+      const teacher = r.profiles as { full_name: string; email: string | null } | null;
+      return {
+        teacher_id: r.teacher_id,
+        teacher_name: userDisplayName({
+          full_name: teacher?.full_name,
+          email: teacher?.email,
+          id: r.teacher_id,
+        }),
+        course_id: r.course_id,
+        course_name: (r.courses as { name: string } | null)?.name ?? "—",
+        grade_avg: Number(r.grade_avg),
+        study_points: r.study_points,
+        composite: Number(r.composite),
+        amount: Number(r.amount),
+        rank: r.rank,
+      };
+    });
+  }
+
+  // No snapshot yet — compute live using the SQL helper.
+  const { data: live, error: lErr } = await supabase.rpc("preview_student_payouts", {
+    p_student_id: studentId,
+    p_period_id: periodId,
+  });
+  if (lErr) throw lErr;
+  if (!live || live.length === 0) return [];
+
+  // Hydrate teacher + course names in a single follow-up query.
+  const teacherIds = [...new Set(live.map((r) => r.teacher_id))];
+  const courseIds = [...new Set(live.map((r) => r.course_id))];
+  const [{ data: teachers }, { data: courses }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", teacherIds),
+    supabase.from("courses").select("id, name").in("id", courseIds),
+  ]);
+  const teacherMap = new Map((teachers ?? []).map((t) => [t.id, t]));
+  const courseMap = new Map((courses ?? []).map((c) => [c.id, c]));
+
+  return live.map((r) => {
+    const t = teacherMap.get(r.teacher_id);
     return {
       teacher_id: r.teacher_id,
       teacher_name: userDisplayName({
-        full_name: teacher?.full_name,
-        email: teacher?.email,
+        full_name: t?.full_name,
+        email: t?.email,
         id: r.teacher_id,
       }),
       course_id: r.course_id,
-      course_name: (r.courses as { name: string } | null)?.name ?? "—",
+      course_name: courseMap.get(r.course_id)?.name ?? "—",
       grade_avg: Number(r.grade_avg),
       study_points: r.study_points,
       composite: Number(r.composite),

@@ -742,6 +742,18 @@ export type Database = {
         Args: { p_period_id: string }
         Returns: undefined
       }
+      preview_student_payouts: {
+        Args: { p_student_id: string; p_period_id: string }
+        Returns: {
+          teacher_id: string
+          course_id: string
+          grade_avg: number
+          study_points: number
+          composite: number
+          amount: number
+          rank: number | null
+        }[]
+      }
     }
     Enums: {
       attendance_status: "present" | "absent" | "late"

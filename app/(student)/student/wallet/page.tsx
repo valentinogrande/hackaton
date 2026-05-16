@@ -6,6 +6,7 @@ import {
   getStudentLivePeriodStats,
   currentPeriodKey,
 } from "@/lib/data/scores";
+import { getStudentPayoutBreakdown } from "@/lib/data/pools";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -37,9 +38,17 @@ export default async function WalletPage() {
   const period = schoolId ? await getCurrentPeriodForSchool(schoolId) : null;
   const periodKey = period?.period ?? currentPeriodKey();
   const stats = await getStudentLivePeriodStats(user.id, periodKey, period?.id);
+  const breakdown = period ? await getStudentPayoutBreakdown(user.id, period.id) : [];
   const withdrawals = await listWithdrawalsForStudent(user.id);
 
-  const payout = stats.payoutAmount ?? 0;
+  // Sum the breakdown for the live payout. getStudentPayoutBreakdown returns the
+  // student_payouts snapshot if it exists, otherwise the live preview from the
+  // RPC — same shape both ways.
+  const payout =
+    breakdown.length > 0
+      ? breakdown.reduce((sum, r) => sum + r.amount, 0)
+      : stats.payoutAmount ?? 0;
+
   const availableForWithdrawal = Math.max(
     0,
     payout -
@@ -69,20 +78,71 @@ export default async function WalletPage() {
               ${availableForWithdrawal.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground">
-              Período {periodKey} · Score actual: {stats.composite.toFixed(2)}
+              Período {periodKey} · Score: {stats.composite.toFixed(2)}
               {" · "}
               {stats.studyPoints} pts
               {stats.gradeAvg > 0 ? ` · prom ${stats.gradeAvg.toFixed(1)}` : ""}
             </p>
-            {!stats.hasRecompute && (
+            {!stats.hasRecompute && period && (
               <p className="text-[11px] text-amber-700/80">
-                El payout final se fija cuando el admin cierra el período.
+                Cálculo en vivo. El monto final se fija cuando el admin cierra el período.
+              </p>
+            )}
+            {!period && (
+              <p className="text-[11px] text-amber-700/80">
+                Sin período activo — pedile al admin que cree uno para que puedas cobrar.
               </p>
             )}
           </div>
           <WithdrawDialog available={availableForWithdrawal} />
         </CardContent>
       </Card>
+
+      {/* Breakdown por curso */}
+      {breakdown.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-700 text-muted-foreground uppercase tracking-wide">
+            Desglose por curso
+          </h2>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Curso · Profe</TableHead>
+                  <TableHead>Rank</TableHead>
+                  <TableHead>Prom</TableHead>
+                  <TableHead>Pts estudio</TableHead>
+                  <TableHead className="text-right">Te toca</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {breakdown.map((r) => (
+                  <TableRow key={`${r.teacher_id}-${r.course_id}`}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{r.course_name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {r.teacher_name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{r.rank ?? "—"}º</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {r.grade_avg > 0 ? r.grade_avg.toFixed(1) : "—"}
+                    </TableCell>
+                    <TableCell>{r.study_points}</TableCell>
+                    <TableCell className="text-right font-semibold">
+                      ${r.amount.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
       {/* Historial chiquito */}
       <div className="space-y-2">

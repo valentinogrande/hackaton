@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { LoginForm } from "./login-form";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
@@ -12,11 +11,8 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <LoginForm />
-          <p className="mt-4 text-sm text-muted-foreground text-center">
-            ¿No tenés cuenta?{" "}
-            <Link href="/register" className="underline">
-              Registrate
-            </Link>
+          <p className="mt-4 text-xs text-muted-foreground text-center">
+            ¿No tenés cuenta? Pedile a un admin del colegio que te dé acceso.
           </p>
         </CardContent>
       </Card>

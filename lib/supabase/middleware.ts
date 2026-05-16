@@ -69,8 +69,16 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Redirect logged-in users away from auth pages to their role home.
-  if ((path === "/login" || path === "/register") && user) {
+  // Public sign-up is disabled — only admin creates accounts. Keep the path
+  // functional in case someone has the old link.
+  if (path === "/register") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Redirect logged-in users away from /login to their role home.
+  if (path === "/login" && user) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")

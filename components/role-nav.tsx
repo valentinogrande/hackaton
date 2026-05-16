@@ -11,6 +11,7 @@ const LINKS: Record<Role, { href: string; label: string }[]> = {
     { href: "/admin/users", label: "Usuarios" },
     { href: "/admin/courses", label: "Cursos" },
     { href: "/admin/subjects", label: "Materias" },
+    { href: "/admin/payouts", label: "Pools / Retiros" },
   ],
   teacher: [
     { href: "/teacher", label: "Inicio" },
@@ -23,6 +24,7 @@ const LINKS: Record<Role, { href: string; label: string }[]> = {
     { href: "/student/estudiar", label: "Estudiar" },
     { href: "/student/notas", label: "Notas" },
     { href: "/student/asistencia", label: "Asistencia" },
+    { href: "/student/wallet", label: "Billetera" },
   ],
 };
 

@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -116,21 +114,32 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          school_id: string | null
           year: number
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          school_id?: string | null
           year: number
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          school_id?: string | null
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "courses_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       enrollments: {
         Row: {
@@ -265,6 +274,47 @@ export type Database = {
           },
         ]
       }
+      payout_periods: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          id: string
+          period: string
+          pool_amount: number
+          school_id: string
+          status: string
+          teacher_share: number
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          period: string
+          pool_amount?: number
+          school_id: string
+          status?: string
+          teacher_share?: number
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          period?: string
+          pool_amount?: number
+          school_id?: string
+          status?: string
+          teacher_share?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_periods_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       points_ledger: {
         Row: {
           created_at: string
@@ -359,6 +409,72 @@ export type Database = {
           },
         ]
       }
+      schools: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      student_scores: {
+        Row: {
+          composite: number
+          computed_at: string
+          grade_score: number
+          id: string
+          payout_amount: number
+          period_id: string
+          student_id: string
+          study_points: number
+        }
+        Insert: {
+          composite?: number
+          computed_at?: string
+          grade_score?: number
+          id?: string
+          payout_amount?: number
+          period_id: string
+          student_id: string
+          study_points?: number
+        }
+        Update: {
+          composite?: number
+          computed_at?: string
+          grade_score?: number
+          id?: string
+          payout_amount?: number
+          period_id?: string
+          student_id?: string
+          study_points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_scores_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payout_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_scores_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_sessions: {
         Row: {
           ended_at: string | null
@@ -440,6 +556,57 @@ export type Database = {
           },
         ]
       }
+      withdrawals: {
+        Row: {
+          amount: number
+          destination: Json | null
+          id: string
+          notes: string | null
+          period_id: string | null
+          processed_at: string | null
+          requested_at: string
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          student_id: string
+        }
+        Insert: {
+          amount: number
+          destination?: Json | null
+          id?: string
+          notes?: string | null
+          period_id?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          student_id: string
+        }
+        Update: {
+          amount?: number
+          destination?: Json | null
+          id?: string
+          notes?: string | null
+          period_id?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawals_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payout_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -449,12 +616,17 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      recompute_student_scores: {
+        Args: { p_period_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       attendance_status: "present" | "absent" | "late"
       question_kind: "multiple_choice" | "flashcard" | "fill_blank" | "open"
       study_mode: "quiz" | "flashcards" | "fill_blank" | "open"
       user_role: "admin" | "teacher" | "student"
+      withdrawal_status: "requested" | "processing" | "paid" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -586,6 +758,7 @@ export const Constants = {
       question_kind: ["multiple_choice", "flashcard", "fill_blank", "open"],
       study_mode: ["quiz", "flashcards", "fill_blank", "open"],
       user_role: ["admin", "teacher", "student"],
+      withdrawal_status: ["requested", "processing", "paid", "rejected"],
     },
   },
 } as const

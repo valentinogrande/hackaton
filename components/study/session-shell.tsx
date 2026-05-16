@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, RotateCw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { SessionItem } from "@/lib/study-types";
 import { POINTS_MAP } from "@/lib/study-types";
@@ -12,7 +12,7 @@ import { ClozeItem } from "./cloze-item";
 import { TrueFalseItem } from "./true-false-item";
 import { VictoryScreen } from "./victory-screen";
 
-type FlowMode = "primary" | "retry" | "done";
+type FlowMode = "primary" | "done";
 
 type AnswerRecord = { item: SessionItem; correct: boolean };
 
@@ -37,91 +37,46 @@ export function SessionShell({
   const router = useRouter();
   const [mode, setMode] = useState<FlowMode>("primary");
   const [stepIndex, setStepIndex] = useState(0);
-  const [primaryRecords, setPrimaryRecords] = useState<AnswerRecord[]>([]);
-  const [retryQueue, setRetryQueue] = useState<SessionItem[]>([]);
-  const [retryAnswers, setRetryAnswers] = useState<AnswerRecord[]>([]);
-  const [retryRound, setRetryRound] = useState(0);
-  const [masteredCount, setMasteredCount] = useState(0);
+  const [records, setRecords] = useState<AnswerRecord[]>([]);
   const [totalPoints, setTotalPoints] = useState(0);
 
-  const currentItems = mode === "primary" ? items : retryQueue;
-  const currentItem = currentItems[stepIndex] ?? null;
-  const progressPct = items.length === 0 ? 100 : Math.min(100, Math.round((masteredCount / items.length) * 100));
+  const currentItem = items[stepIndex] ?? null;
+  const progressPct =
+    items.length === 0 ? 100 : Math.min(100, Math.round((stepIndex / items.length) * 100));
 
-  function finishAll(allPrimaryRecords: AnswerRecord[], points: number, rounds: number) {
-    const scored = allPrimaryRecords.filter((r) => r.item.type !== "flashcard");
+  function finishAll(allRecords: AnswerRecord[], points: number) {
+    const scored = allRecords.filter((r) => r.item.type !== "flashcard");
     const correct = scored.filter((r) => r.correct).length;
     const total = scored.length;
-    onFinish(correct, total, points, rounds);
+    onFinish(correct, total, points, 0);
     setMode("done");
-  }
-
-  function finalizePrimary(records: AnswerRecord[], points: number) {
-    const wrong = records.filter((r) => !r.correct && r.item.type !== "flashcard");
-    if (wrong.length === 0) {
-      finishAll(records, points, 0);
-      return;
-    }
-    setRetryQueue(wrong.map((r) => r.item));
-    setRetryAnswers([]);
-    setRetryRound(1);
-    setStepIndex(0);
-    setMode("retry");
-  }
-
-  function finalizeRetry(answers: AnswerRecord[], allPrimary: AnswerRecord[], points: number, round: number) {
-    const wrong = answers.filter((a) => !a.correct);
-    if (wrong.length === 0) {
-      finishAll(allPrimary, points, round);
-      return;
-    }
-    setRetryQueue(wrong.map((a) => a.item));
-    setRetryAnswers([]);
-    setRetryRound((r) => r + 1);
-    setStepIndex(0);
   }
 
   function handleAnswer(item: SessionItem, correct: boolean) {
     onItemAnswer(item, correct);
 
-    const pts = correct && mode === "primary" ? POINTS_MAP[item.type] : 0;
+    const pts = correct ? POINTS_MAP[item.type] : 0;
     const nextPoints = totalPoints + pts;
     setTotalPoints(nextPoints);
 
-    if (correct || item.type === "flashcard") {
-      setMasteredCount((c) => c + 1);
-    }
+    const next = [...records, { item, correct }];
+    setRecords(next);
 
-    if (mode === "primary") {
-      const next = [...primaryRecords, { item, correct }];
-      setPrimaryRecords(next);
-      if (stepIndex + 1 < items.length) {
-        setStepIndex((i) => i + 1);
-      } else {
-        finalizePrimary(next, nextPoints);
-      }
-      return;
-    }
-
-    if (mode === "retry") {
-      const next = [...retryAnswers, { item, correct }];
-      setRetryAnswers(next);
-      if (stepIndex + 1 < retryQueue.length) {
-        setStepIndex((i) => i + 1);
-      } else {
-        finalizeRetry(next, primaryRecords, nextPoints, retryRound);
-      }
+    if (stepIndex + 1 < items.length) {
+      setStepIndex((i) => i + 1);
+    } else {
+      finishAll(next, nextPoints);
     }
   }
 
   if (mode === "done") {
-    const scored = primaryRecords.filter((r) => r.item.type !== "flashcard");
+    const scored = records.filter((r) => r.item.type !== "flashcard");
     return (
       <VictoryScreen
         correct={scored.filter((r) => r.correct).length}
         total={scored.length}
         points={totalPoints}
-        retryRounds={retryRound}
+        retryRounds={0}
       />
     );
   }
@@ -144,7 +99,9 @@ export function SessionShell({
               <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-violet-600 truncate">
                 {materialTitle}
               </p>
-              <p className="font-semibold text-sm truncate">Sesión de estudio</p>
+              <p className="font-semibold text-sm truncate">
+                Pregunta {Math.min(stepIndex + 1, items.length)} de {items.length}
+              </p>
             </div>
             <span className="text-sm font-bold text-muted-foreground tabular-nums">{progressPct}%</span>
           </div>
@@ -157,44 +114,13 @@ export function SessionShell({
             />
           </div>
         </div>
-
-        <AnimatePresence initial={false}>
-          {mode === "retry" && (
-            <motion.div
-              key={`retry-${retryRound}`}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden bg-violet-50 border-t border-violet-200"
-            >
-              <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 3.2, repeat: Infinity, ease: "linear" }}
-                  className="w-9 h-9 rounded-full bg-violet-600 text-white grid place-items-center shrink-0"
-                >
-                  <RotateCw className="w-4 h-4" strokeWidth={3} />
-                </motion.div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-violet-600">
-                    Reintento {retryRound}
-                  </p>
-                  <p className="text-sm font-semibold text-violet-700 leading-tight">
-                    {retryQueue.length} pregunta{retryQueue.length !== 1 ? "s" : ""} por dominar. ¡Vamos!
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </header>
 
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10 flex items-center justify-center">
         <div className="w-full max-w-xl">
           <AnimatePresence mode="wait">
             {currentItem && (
-              <div key={`${mode}-${retryRound}-${stepIndex}-${currentItem.hash}`}>
+              <div key={`${stepIndex}-${currentItem.hash}`}>
                 {renderItem(currentItem, (correct) => handleAnswer(currentItem, correct))}
               </div>
             )}

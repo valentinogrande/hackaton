@@ -76,8 +76,9 @@ export default async function EstudiarPage() {
       <div className="rounded-xl bg-violet-50 ring-1 ring-violet-100 p-4 text-sm text-muted-foreground flex items-start gap-2.5">
         <Sparkles className="size-4 mt-0.5 shrink-0 text-violet-500" />
         <p>
-          La generación tarda 10–20 segundos. Cada sesión mezcla los 4 tipos de preguntas y las
-          preguntas fallidas se repiten hasta dominarlas.
+          La generación tarda 10–20 segundos. Cada sesión mezcla los 4 tipos
+          de preguntas. Las respondés una sola vez — si te equivocás, queda
+          marcada como incorrecta y pasás a la siguiente.
         </p>
       </div>
     </div>

@@ -283,11 +283,10 @@ export async function generateTrueFalseFromPdf(args: {
 // ============================================================
 
 export async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse");
-  const buffer = Buffer.from(pdfBytes);
-  const data = await pdfParse(buffer);
-  return (data.text as string).trim();
+  const { extractText, getDocumentProxy } = await import("unpdf");
+  const pdf = await getDocumentProxy(pdfBytes);
+  const { text } = await extractText(pdf, { mergePages: true });
+  return text.trim();
 }
 
 function hashItem(type: string, key: string): string {

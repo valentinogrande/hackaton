@@ -44,12 +44,14 @@ export function WithdrawDialog({ available }: { available: number }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="lg" disabled={disabled}>
-          <ArrowDownToLine className="size-4" />
-          Retirar puntos
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button size="lg" disabled={disabled}>
+            <ArrowDownToLine className="size-4" />
+            Retirar puntos
+          </Button>
+        }
+      />
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Retirar puntos</DialogTitle>

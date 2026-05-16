@@ -3,7 +3,8 @@ import { listWithdrawalsForStudent } from "@/lib/data/withdrawals";
 import {
   getCurrentPeriodForSchool,
   getDemoSchoolId,
-  getStudentScoreForPeriod,
+  getStudentLivePeriodStats,
+  currentPeriodKey,
 } from "@/lib/data/scores";
 import { getStudentPayoutBreakdown } from "@/lib/data/pools";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, GraduationCap } from "lucide-react";
+import { Trophy, GraduationCap, Info } from "lucide-react";
 import { BankInfoForm } from "./bank-form";
 import { WithdrawForm } from "./withdraw-form";
 
@@ -43,9 +44,9 @@ export default async function WalletPage() {
 
   const schoolId = await getDemoSchoolId();
   const period = schoolId ? await getCurrentPeriodForSchool(schoolId) : null;
-  const score = period
-    ? await getStudentScoreForPeriod(user.id, period.id)
-    : null;
+  const periodKey = period?.period ?? currentPeriodKey();
+
+  const stats = await getStudentLivePeriodStats(user.id, periodKey, period?.id);
   const breakdown = period
     ? await getStudentPayoutBreakdown(user.id, period.id)
     : [];
@@ -59,7 +60,7 @@ export default async function WalletPage() {
 
   const availableForWithdrawal = Math.max(
     0,
-    Number(score?.payout_amount ?? 0) -
+    (stats.payoutAmount ?? 0) -
       withdrawals
         .filter((w) => w.status !== "rejected")
         .reduce((sum, w) => sum + Number(w.amount), 0)
@@ -77,9 +78,11 @@ export default async function WalletPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{period?.period ?? "—"}</p>
+            <p className="text-2xl font-bold">{periodKey}</p>
             <p className="text-xs text-muted-foreground">
-              Pool del colegio: ${period?.pool_amount ?? 0}
+              {period
+                ? `Pool del colegio: $${period.pool_amount}`
+                : "Sin período activo. Pedile al admin que cree uno."}
             </p>
           </CardContent>
         </Card>
@@ -87,15 +90,14 @@ export default async function WalletPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Tu score global
+              Tu desempeño del mes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {score ? Number(score.composite).toFixed(2) : "0"}
-            </p>
+            <p className="text-2xl font-bold">{stats.composite.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">
-              {score?.study_points ?? 0} pts · prom {score?.grade_score?.toFixed?.(1) ?? "—"}
+              {stats.studyPoints} pts ·{" "}
+              {stats.gradeAvg > 0 ? `prom ${stats.gradeAvg.toFixed(1)}` : "sin notas"}
             </p>
           </CardContent>
         </Card>
@@ -107,13 +109,37 @@ export default async function WalletPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">${score?.payout_amount ?? 0}</p>
-            <p className="text-xs text-muted-foreground">
-              Disponible para retirar: ${availableForWithdrawal.toFixed(2)}
-            </p>
+            {stats.hasRecompute ? (
+              <>
+                <p className="text-3xl font-bold">
+                  ${stats.payoutAmount?.toFixed(2) ?? "0.00"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Disponible para retirar: ${availableForWithdrawal.toFixed(2)}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-3xl font-bold text-muted-foreground">—</p>
+                <p className="text-xs text-muted-foreground">
+                  Se calcula cuando el admin cierre el período
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {!stats.hasRecompute && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex items-start gap-2">
+          <Info className="size-4 mt-0.5 shrink-0" />
+          <p>
+            Los números de arriba son <strong>en vivo</strong>: cuentan tus notas y
+            puntos del mes. El payout se fija cuando el admin corre &ldquo;Recalcular&rdquo; en{" "}
+            <code className="bg-amber-100 px-1.5 py-0.5 rounded-md text-xs">/admin/payouts</code>.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -143,7 +169,9 @@ export default async function WalletPage() {
                     colSpan={5}
                     className="text-center text-muted-foreground"
                   >
-                    Todavía no hay payouts calculados para este período.
+                    {period
+                      ? "Pedile al admin que recalcule el período para ver el desglose."
+                      : "Sin período activo."}
                   </TableCell>
                 </TableRow>
               ) : (

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { processWithdrawal } from "@/lib/finance/payments";
 
 export async function createPeriod(formData: FormData) {
   const schoolId = String(formData.get("school_id") ?? "");
@@ -30,11 +31,14 @@ export async function recomputeScores(periodId: string) {
 
 export async function markWithdrawalPaid(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("withdrawals")
-    .update({ status: "paid", processed_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) return { error: error.message };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const actorId = user?.id ?? null;
+
+  const result = await processWithdrawal(id, actorId);
+  if (!result.ok) return { error: result.error };
+
   revalidatePath("/admin/payouts");
   return { ok: true as const };
 }
